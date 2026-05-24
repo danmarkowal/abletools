@@ -1,18 +1,28 @@
 import os
+import re
 
 
+import abletools.plugins.cli as plugins
 import abletools.samples.cli as samples
 
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 from typing import Optional, Sequence
 
 
-def dir_path(arg: str):
+def dir_type(arg: str) -> str:
     if os.path.isdir(arg):
         return arg
     else:
-        raise NotADirectoryError(arg)
+        raise ArgumentTypeError(f"Directory not found: {arg}.")
+
+
+def regex_type(arg: str) -> re.Pattern[str]:
+    try:
+        return re.compile(arg)
+    except re.error as e:
+        raise ArgumentTypeError(
+            f"Invalid regex pattern: '{arg}'. Error: {e}")
 
 
 def main(argv: Optional[Sequence[str]] = None):
@@ -24,18 +34,30 @@ def main(argv: Optional[Sequence[str]] = None):
     samples_parser = subparsers.add_parser(
         "alsamp", description="Finds unused samplepacks.")
     samples_parser.add_argument(
-        "-p", "--projdir", type=dir_path, required=True)
+        "-p", "--projdir", type=dir_type, required=True)
     samples_parser.add_argument(
-        "-s", "--sampledir", type=dir_path, required=True)
+        "-s", "--sampledir", type=dir_type, required=True)
     samples_parser.add_argument("-r", "--recursive", action="store_false")
     samples_parser.add_argument("--debug", action="store_true")
     samples_parser.add_argument("--include-backups", action="store_true")
     samples_parser.set_defaults(func=samples.handle_command)
 
+    plugins_parser = subparsers.add_parser(
+        "alplug", description="Converts a project from using VST2 plugins to using VST3 plugins (where available).")
+    plugins_parser.add_argument(
+        "-p", "--projfile", type=dir_type, required=True, help="The project file to convert.")
+    plugins_parser.add_argument(
+        "-y", "--includeplugs", type=regex_type, help="Regex for the plugins to include in the conversion."
+    )
+    plugins_parser.add_argument(
+        "-n", "--ignoreplugs", type=regex_type, help="Regex for the plugins to include in the conversion."
+    )
+    plugins_parser.set_defaults(func=plugins.handle_command)
+
     try:
         args = parser.parse_args(argv)
-    except NotADirectoryError as e:
-        print(f"Folder not found: '{e}'.")
+    except ArgumentTypeError as e:
+        print(e)
         return
 
     args.func(args)
