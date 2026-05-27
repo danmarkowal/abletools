@@ -7,7 +7,8 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
     requires=[
-        "psutil"
+        "psutil",
+        "lxml"
     ],
     entry_points={
         'console_scripts': [

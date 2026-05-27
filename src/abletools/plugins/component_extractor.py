@@ -1,7 +1,7 @@
 import ctypes
 from dataclasses import dataclass
+from pathlib import Path
 import struct
-import os
 import sys
 from typing import Dict, Tuple
 
@@ -11,6 +11,8 @@ Component Extractor for VST3 Plugins
 This script is designed to extract component information from VST3 plugins across both Windows and macOS.
 """
 
+type Uid = Tuple[int, int, int, int]
+
 # Windows uses __stdcall for COM and VST APIs. macOS uses cdecl.
 if sys.platform == 'win32':
     FUNCTYPE = ctypes.WINFUNCTYPE
@@ -18,26 +20,25 @@ else:
     FUNCTYPE = ctypes.CFUNCTYPE
 
 
-def resolve_plugin_binary(plugin_path: str) -> str:
+def _resolve_plugin_binary(plugin_path: Path) -> Path:
     """
     Resolves the actual executable binary path. 
     Crucial for handling macOS bundles and modern Windows VST3 folders.
     """
-    if not os.path.isdir(plugin_path):
+    if not plugin_path.is_dir():
         return plugin_path  # It is a direct file (e.g., standard .dll)
 
-    basename = os.path.splitext(os.path.basename(plugin_path))[0]
+    basename = plugin_path.stem
 
     if sys.platform == 'darwin':
-        # macOS bundle structure: Plugin.vst3/Contents/MacOS/Plugin
-        mac_bin = os.path.join(plugin_path, "Contents", "MacOS", basename)
-        if os.path.exists(mac_bin):
+        # macOS bundle structure: <plugin>.vst3/Contents/MacOS/<plugin>
+        mac_bin = plugin_path / "Contents" / "MacOS" / basename
+        if mac_bin.exists():
             return mac_bin
     elif sys.platform == 'win32':
-        # Windows VST3 folder structure: Plugin.vst3/Contents/x86_64-win/Plugin.vst3
-        win_bin = os.path.join(plugin_path, "Contents",
-                               "x86_64-win", f"{basename}.vst3")
-        if os.path.exists(win_bin):
+        # Windows VST3 folder structure: <plugin>.vst3/Contents/x86_64-win/<plugin>.vst3
+        win_bin = plugin_path / "Contents" / "x86_64-win" / f"{basename}.vst3"
+        if win_bin.exists():
             return win_bin
 
     return plugin_path
@@ -53,7 +54,7 @@ class PClassInfo(ctypes.Structure):
     ]
 
 
-class ComponentExtractorError(Exception):
+class ComponentExtractionError(Exception):
     pass
 
 
@@ -61,27 +62,29 @@ class ComponentExtractorError(Exception):
 class VST3Component:
     name: str
     category: str
-    guid_fields: Tuple[int, int, int, int]
+    # The 4 32-bit signed integers composing the plugin's GUID in big-endian format
+    guid_fields: Uid
 
 
-def get_vst3_components(plugin_path: str) -> Dict[str, VST3Component]:
-    binary_path = resolve_plugin_binary(plugin_path)
+def get_vst3_components(plugin_path: Path) -> Dict[str, VST3Component]:
+    binary_path = _resolve_plugin_binary(plugin_path)
 
     try:
         lib = ctypes.CDLL(binary_path)
     except Exception as e:
-        raise ComponentExtractorError(f"Failed to load binary: {e}")
+        raise ComponentExtractionError(
+            f"Failed to load binary '{binary_path}'. Error: {e}")
 
     if not hasattr(lib, 'GetPluginFactory'):
-        raise ComponentExtractorError(
+        raise ComponentExtractionError(
             "Invalid VST3: 'GetPluginFactory' entry point not found.")
 
     lib.GetPluginFactory.restype = ctypes.c_void_p
     factory_ptr = lib.GetPluginFactory()
 
     if not factory_ptr:
-        raise ComponentExtractorError(
-            "GetPluginFactory returned a null pointer.")
+        raise ComponentExtractionError(
+            "Entry point 'GetPluginFactory' returned a null pointer.")
 
     # Cast to a pointer of void pointers to access the VTable
     vtable_ptr = ctypes.cast(factory_ptr, ctypes.POINTER(ctypes.c_void_p))[0]

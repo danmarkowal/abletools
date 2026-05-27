@@ -17,3 +17,4 @@ src/abletools/samples/scanner.py
 src/abletools/utils/__init__.py
 src/abletools/utils/cli_utils.py
 src/abletools/utils/process_utils.py
+src/abletools/utils/project_utils.py

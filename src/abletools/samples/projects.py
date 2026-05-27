@@ -1,10 +1,10 @@
-import gzip
 import os
 import re
 from enum import Enum, auto
 from typing import Set
 
 from abletools.samples.samples import Sample
+from abletools.utils import project_utils
 
 # pre-compile regex
 PATH_PATTERN = re.compile(
@@ -17,15 +17,12 @@ class DirType(Enum):
     BACKUP = auto()  # this folder contains backups which may be skipped
 
 
-def process_project_file(file: str) -> set[Sample]:
-    with open(file, "rb") as f:
-        text = f.read()
-        try:
-            xml = gzip.decompress(text).decode()
-        except gzip.BadGzipFile:
-            xml = text.decode()
-
-    sample_paths = re.findall(PATH_PATTERN, xml)
+def process_project_file(path: str) -> set[Sample]:
+    """
+    Retrieves all samples used in a given project file.
+    """
+    sample_paths = re.findall(
+        PATH_PATTERN, project_utils.read_project_file(path).decode())
     # ensure that paths are absolute
     return {Sample(os.path.abspath(path)) for path in sample_paths}
 
@@ -60,7 +57,7 @@ def get_project_files(folder: str, recursive: bool, include_backups: bool, dir_t
 
     for child in children:
         file = os.path.join(folder, child)
-        if os.path.isdir(file) and recursive:
+        if recursive and os.path.isdir(file):
             sub_dir_type = DirType.BACKUP if dir_type is DirType.PROJECT and is_backup_dir(
                 file) else DirType.DEFAULT
 

@@ -10,11 +10,18 @@ from argparse import ArgumentParser, ArgumentTypeError
 from typing import Optional, Sequence
 
 
+def file_type(arg: str) -> str:
+    if os.path.isfile(arg):
+        return arg
+    else:
+        raise ArgumentTypeError(f"File not found: '{arg}'.")
+
+
 def dir_type(arg: str) -> str:
     if os.path.isdir(arg):
         return arg
     else:
-        raise ArgumentTypeError(f"Directory not found: {arg}.")
+        raise ArgumentTypeError(f"Directory not found: '{arg}'.")
 
 
 def regex_type(arg: str) -> re.Pattern[str]:
@@ -45,12 +52,15 @@ def main(argv: Optional[Sequence[str]] = None):
     plugins_parser = subparsers.add_parser(
         "alplug", description="Converts a project from using VST2 plugins to using VST3 plugins (where available).")
     plugins_parser.add_argument(
-        "-p", "--projfile", type=dir_type, required=True, help="The project file to convert.")
+        "-p", "--projfile", type=file_type, required=True, help="The project file to convert.")
     plugins_parser.add_argument(
         "-y", "--includeplugs", type=regex_type, help="Regex for the plugins to include in the conversion."
     )
     plugins_parser.add_argument(
         "-n", "--ignoreplugs", type=regex_type, help="Regex for the plugins to include in the conversion."
+    )
+    plugins_parser.add_argument(
+        "-w", "--ignorewarnings", action="store_true", help="Ignores version warnings."
     )
     plugins_parser.set_defaults(func=plugins.handle_command)
 
