@@ -1,8 +1,7 @@
-import gzip
+import time
 
 
 from argparse import Namespace
-import time
 from lxml import etree
 from pathlib import Path
 
@@ -16,7 +15,7 @@ from abletools.utils import project_utils
 ABLETON_LIVE_PROJECT_SUFFIX = ".als"
 
 
-def handle_command(args: Namespace):
+def convert_vst2_to_vst3(args: Namespace):
     # 1. Read and decode project file (gzip)
     # 2. Check schema version
     # 3. Find all <VstPluginInfo> tags
@@ -40,14 +39,13 @@ def handle_command(args: Namespace):
     proj_path = Path(args.projfile)
     # The new project file name is the same as the old one but with " (Converted YYYY-MM-DD HH-MM-SS)" appended before the file extension
     timestamp = time.strftime("%Y-%m-%d %H-%M-%S")
-    new_proj_name = proj_path.with_name(
+    new_proj_path = proj_path.with_name(
         f"{proj_path.stem} (Converted {timestamp}){ABLETON_LIVE_PROJECT_SUFFIX}")
-    print(f"Writing converted project to: '{new_proj_name}'.")
+    print(f"Writing converted project to: '{new_proj_path}'.")
 
-    with open(new_proj_name, "wb") as f:
-        # Fix indentation
-        etree.indent(root, "\t")
+    # Fix indentation
+    etree.indent(root, "\t")
 
-        new_proj_file = etree.tostring(
-            root, pretty_print=True, xml_declaration=True, encoding="UTF-8")
-        f.write(gzip.compress(new_proj_file))
+    new_proj_contents = etree.tostring(
+        root, pretty_print=True, xml_declaration=True, encoding="UTF-8")
+    project_utils.write_project_file(new_proj_path, new_proj_contents)

@@ -7,7 +7,7 @@ from abletools.samples.formatter import Formatter
 from abletools.samples.scanner import Scanner
 
 
-def handle_command(args: Namespace):
+def find_unused_samples(args: Namespace):
     if is_process_running("Live"):
         print("Please close Ableton Live before running this command.")
         return

@@ -1,7 +1,11 @@
 import os
 import re
+
+
 from enum import Enum, auto
+from pathlib import Path
 from typing import Set
+
 
 from abletools.samples.samples import Sample
 from abletools.utils import project_utils
@@ -22,7 +26,7 @@ def process_project_file(path: str) -> set[Sample]:
     Retrieves all samples used in a given project file.
     """
     sample_paths = re.findall(
-        PATH_PATTERN, project_utils.read_project_file(path).decode())
+        PATH_PATTERN, project_utils.read_project_file(Path(path)).decode())
     # ensure that paths are absolute
     return {Sample(os.path.abspath(path)) for path in sample_paths}
 

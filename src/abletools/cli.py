@@ -3,6 +3,7 @@ import re
 
 
 import abletools.plugins.cli as plugins
+import abletools.projects.cli as projects
 import abletools.samples.cli as samples
 
 
@@ -50,7 +51,7 @@ def main(argv: Optional[Sequence[str]] = None):
         "--debug", action="store_true", help="Print debug information.")
     samples_parser.add_argument("--include-backups", action="store_true",
                                 help="Scan for samples in backup project folder.")
-    samples_parser.set_defaults(func=samples.handle_command)
+    samples_parser.set_defaults(func=samples.find_unused_samples)
 
     plugins_parser = subparsers.add_parser(
         "plug", description="Converts a project from using VST2 plugins to using VST3 plugins (where available).")
@@ -65,7 +66,19 @@ def main(argv: Optional[Sequence[str]] = None):
     plugins_parser.add_argument(
         "-w", "--ignorewarnings", action="store_true", help="Ignores version warnings."
     )
-    plugins_parser.set_defaults(func=plugins.handle_command)
+    plugins_parser.set_defaults(func=plugins.convert_vst2_to_vst3)
+
+    unpack_parser = subparsers.add_parser(
+        "unpack", description="Converts an Ableton project file to a readable XML file.")
+    unpack_parser.add_argument(
+        "-p", "--projfile", type=file_type, required=True, help="The project file to unpack.")
+    unpack_parser.set_defaults(func=projects.unpack_project)
+
+    pack_parser = subparsers.add_parser(
+        "pack", description="Converts an XML file to an Ableton project file.")
+    pack_parser.add_argument("-p", "--projfile", type=file_type,
+                             required=True, help="The project file to pack.")
+    pack_parser.set_defaults(func=projects.pack_project)
 
     try:
         args = parser.parse_args(argv)

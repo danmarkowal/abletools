@@ -143,10 +143,11 @@ class VstPluginDataConverter(XMLConverter):
             raise XMLConversionError(
                 f"Buffer contents for element '{root.getroottree().getpath(root)}' are empty.")
 
-        buffer_contents = self._sanitize_buffer_contents(buffer_contents)
+        # buffer_contents = self._sanitize_buffer_contents(buffer_contents)
 
         vst3_state = etree.Element("ProcessorState")
-        vst3_state.text = PluginDataConverter().convert_to_processor_state(buffer_contents)
+        # vst3_state.text = PluginDataConverter().convert_to_processor_state(buffer_contents)
+        vst3_state.text = buffer_contents
         return vst3_state
 
     def _sanitize_buffer_contents(self, buffer_contents: str) -> str:

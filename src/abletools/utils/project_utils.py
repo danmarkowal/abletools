@@ -1,10 +1,11 @@
 import gzip
 
 
-def read_project_file(path: str) -> bytes:
-    """
-    Reads the contents of an Ableton Live project file by decompressing it.
-    """
+from pathlib import Path
+
+
+def read_project_file(path: Path) -> bytes:
+    """Reads the contents of an Ableton Live project file by decompressing it."""
     with open(path, "rb") as f:
         contents = f.read()
         try:
@@ -12,3 +13,8 @@ def read_project_file(path: str) -> bytes:
         except gzip.BadGzipFile:
             pass
     return contents
+
+
+def write_project_file(path: Path, contents: bytes):
+    with open(path, "wb") as f:
+        f.write(gzip.compress(contents))
