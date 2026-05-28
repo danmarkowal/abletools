@@ -22,7 +22,8 @@ def convert_vst2_to_vst3(args: Namespace):
     # 4. Convert VST2 plugin info to VST3 plugin info
     # 5. Write VST3 plugin info back to the XML tree
     # 6. Gzip XML file and write it to a new file (do not overwrite old project file)
-    root = etree.fromstring(project_utils.read_project_file(args.projfile))
+    root = etree.fromstring(project_utils.read_project_file(
+        args.projfile), parser=etree.XMLParser(huge_tree=True))
 
     ctx = VstConversionContext(get_default_uid_cache_path())
     converter = Vst3Converter(ctx)
