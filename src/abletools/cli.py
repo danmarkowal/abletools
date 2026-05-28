@@ -39,18 +39,21 @@ def main(argv: Optional[Sequence[str]] = None):
     subparsers = parser.add_subparsers(dest="commands", required=True)
 
     samples_parser = subparsers.add_parser(
-        "alsamp", description="Finds unused samplepacks.")
+        "samp", description="Finds unused samplepacks.")
     samples_parser.add_argument(
-        "-p", "--projdir", type=dir_type, required=True)
+        "-p", "--projdir", type=dir_type, required=True, help="The directory containing your Ableton project folder(s).")
     samples_parser.add_argument(
-        "-s", "--sampledir", type=dir_type, required=True)
-    samples_parser.add_argument("-r", "--recursive", action="store_false")
-    samples_parser.add_argument("--debug", action="store_true")
-    samples_parser.add_argument("--include-backups", action="store_true")
+        "-s", "--sampledir", type=dir_type, required=True, help="The directory containing your sample pack(s).")
+    samples_parser.add_argument(
+        "-r", "--recursive", action="store_false", help="Scan for project files recursively.")
+    samples_parser.add_argument(
+        "--debug", action="store_true", help="Print debug information.")
+    samples_parser.add_argument("--include-backups", action="store_true",
+                                help="Scan for samples in backup project folder.")
     samples_parser.set_defaults(func=samples.handle_command)
 
     plugins_parser = subparsers.add_parser(
-        "alplug", description="Converts a project from using VST2 plugins to using VST3 plugins (where available).")
+        "plug", description="Converts a project from using VST2 plugins to using VST3 plugins (where available).")
     plugins_parser.add_argument(
         "-p", "--projfile", type=file_type, required=True, help="The project file to convert.")
     plugins_parser.add_argument(
