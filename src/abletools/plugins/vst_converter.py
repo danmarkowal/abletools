@@ -146,11 +146,7 @@ class VstPluginDataConverter(XMLConverter):
         buffer_contents = self._sanitize_buffer_contents(buffer_contents)
 
         vst3_state = etree.Element("ProcessorState")
-        vst3_state.text = PluginDataConverter().convert_to_processor_state(buffer_contents,
-                                                                           self.vst2_unique_id,
-                                                                           self.plugin_version,
-                                                                           self.current_program,
-                                                                           self.is_bypassed)
+        vst3_state.text = PluginDataConverter().convert_to_processor_state(buffer_contents)
         return vst3_state
 
     def _sanitize_buffer_contents(self, buffer_contents: str) -> str:

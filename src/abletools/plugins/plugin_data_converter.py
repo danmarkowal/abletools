@@ -1,62 +1,64 @@
 import struct
 import binascii
+import zlib
 
 
 class PluginDataConverter:
-    def __init__(self, endianness: str = "<"):
-        """Initializes the converter. Modern VST3 wrapper persistence typically 
-        uses Little-Endian ('<') for the header sequence on x86/ARM architectures.
+    def __init__(self):
+        """Initializes the converter. 
+        Ableton's host-level VST3 wrapper strictly uses Little-Endian ('<').
         """
-        self.endianness = endianness
-        self.magic_cookie = b'VstW'
-        self.wrapper_version = 1
+        self.endianness = "<"
+        self.version_flag = 1
 
-    def _decode_buffer(self, raw_buffer_contents: str) -> bytes:
-        """Safely decodes the DAW's XML string payload into bytes."""
+    def _is_zlib_compressed(self, data: bytes) -> bool:
+        """Detects if a byte block is a zlib archive via standard headers."""
+        return data.startswith(b'\x78\x01') or data.startswith(b'\x78\x9c') or data.startswith(b'\x78\xda')
+
+    def convert_to_processor_state(self, raw_vst2_buffer_contents: str) -> str:
+        """Converts an Ableton VST2 <Buffer> hex string into a VST3 <ProcessorState> 
+        hex string using Ableton's actual internal migration layout.
+        """
+        # Clean up any line breaks or whitespace from the XML block
+        clean_hex = "".join(raw_vst2_buffer_contents.split())
+
+        # 1. Decode hex string to raw binary bytes
         try:
-            return binascii.unhexlify(raw_buffer_contents)
+            decoded_bytes = binascii.unhexlify(clean_hex)
         except Exception as e:
-            raise ValueError(f"Failed to decode the VST2 buffer. Error: {e}")
+            raise ValueError(f"Failed to decode hex string. Error: {e}")
 
-    def convert_to_processor_state(self,
-                                   raw_vst2_buffer_contents: str,
-                                   vst2_unique_id: int,
-                                   plugin_version: int = 0,
-                                   current_program: int = 0,
-                                   is_bypassed: bool = False) -> str:
-        """Orchestrates the conversion from a VST2 buffer string into a VST3 
-        ProcessorState Base16 string, using the Steinberg VstW wrapper structure.
+        # 2. Check for Ableton's zlib layer and extract the true VST2 payload
+        is_compressed = self._is_zlib_compressed(decoded_bytes)
+        if is_compressed:
+            try:
+                vst2_raw_bytes = zlib.decompress(decoded_bytes)
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to decompress zlib payload. Error: {e}")
+        else:
+            vst2_raw_bytes = decoded_bytes
 
-        https://github.com/steinbergmedia/vst3_public_sdk/blob/a3911a4615dabbfdfd9d181ee26b05c70c289a95/source/vst/utility/vst2persistence.cpp
-        """
-        # 1. Decode the raw XML buffer string into pure binary bytes
-        vst2_chunk_bytes = self._decode_buffer(
-            raw_vst2_buffer_contents)
-        chunk_size = len(vst2_chunk_bytes)
+        # 3. Get the exact size of the VST2 payload
+        vst2_length = len(vst2_raw_bytes)
 
-        # 2. Format the bypass flag (C++ bool serializes as a 32-bit integer here)
-        bypass_flag = 1 if is_bypassed else 0
+        # 4. Pack Ableton's host migration header (Little-Endian)
+        # [4 Bytes: Version (1)] [4 Bytes: VST2 Data Length]
+        ableton_header = struct.pack(
+            f'{self.endianness}II', self.version_flag, vst2_length)
 
-        # 3. Pack the C++ Vst2xState Header
-        # Format string: 4s (4-char string), i (int32), i (int32), i (int32), i (int32), i (int32)
-        header_format = f'{self.endianness}4siiiii'
-        vstw_header = struct.pack(header_format,
-                                  self.magic_cookie,   # b'VstW'
-                                  self.wrapper_version,  # 1
-                                  vst2_unique_id,      # e.g., 1802727781
-                                  plugin_version,      # e.g., 1073873926
-                                  current_program,     # e.g., 0
-                                  bypass_flag)         # e.g., 0 or 1
+        # 5. Stitch the migration block together
+        vst3_raw_payload = ableton_header + vst2_raw_bytes
 
-        # 4. Pack the Vector size prefix
-        # The SDK uses a std::vector for the chunk, which serializes its size right before the data.
-        vector_prefix = struct.pack(f'{self.endianness}i', chunk_size)
+        # 6. Match the compression state of the source project file
+        if is_compressed:
+            # Level 1 compression forces the '78 01' header style seen in Serum
+            vst3_final_bytes = zlib.compress(vst3_raw_payload, level=1)
+        else:
+            vst3_final_bytes = vst3_raw_payload
 
-        # 5. Concatenate to form the monolithic VST3 binary payload
-        vst3_binary_payload = vstw_header + vector_prefix + vst2_chunk_bytes
-
-        # 6. Encode back to Base16 for the VST3 <ProcessorState> XML node
+        # 7. Convert back to the clean uppercase hex format used in .als files
         vst3_processor_state_string = binascii.hexlify(
-            vst3_binary_payload).decode("ascii").upper()
+            vst3_final_bytes).decode("ascii").upper()
 
         return vst3_processor_state_string
