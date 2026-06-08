@@ -31,16 +31,16 @@ class VstIdConverter:
         :param cache_file_path: Absolute or relative path to the JSON cache file.
         """
         self.cache_file_path = uid_cache_path
-        self.cache: Dict[int, Uid] = self._load_cache()
+        self.cache: Dict[str, Uid] = self._load_cache()
 
-    def _load_cache(self) -> Dict[int, Uid]:
+    def _load_cache(self) -> Dict[str, Uid]:
         """Loads the JSON cache if it exists, otherwise returns an empty dict."""
         if self.cache_file_path.exists():
             try:
                 with open(self.cache_file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     # Convert keys back to string and values to tuples
-                    return {int(k): tuple(v) for k, v in data.items()}
+                    return {k: tuple(v) for k, v in data.items()}
             except (json.JSONDecodeError, IOError):
                 print(
                     f"Warning: Failed to read cache at {self.cache_file_path}. Starting fresh.",
@@ -62,7 +62,7 @@ class VstIdConverter:
             )
 
     def convert_to_uid(
-        self, vst2_path: Path, vst2_id: int
+        self, vst2_path: Path, vst2_id: str
     ) -> Uid:
         """Retrieves the 4-tuple VST3 GUID components from the cache, or converts it if not cached.
 

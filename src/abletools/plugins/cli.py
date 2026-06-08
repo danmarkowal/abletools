@@ -6,6 +6,7 @@ from lxml import etree
 from pathlib import Path
 
 
+from abletools.plugins.patch_registry import PatchRegistry
 from abletools.plugins.vst_converter import Vst3Converter, VstConversionContext
 from abletools.plugins.vst_id_converter import get_default_uid_cache_path
 from abletools.utils.xml_converter import XMLConversionError
@@ -25,7 +26,10 @@ def convert_vst2_to_vst3(args: Namespace):
     root = etree.fromstring(project_utils.read_project_file(
         args.projfile), parser=etree.XMLParser(huge_tree=True))
 
-    ctx = VstConversionContext(get_default_uid_cache_path())
+    patch_registry = PatchRegistry()
+    if args.patchdir:
+        patch_registry.load_user_patches(args.patchdir)
+    ctx = VstConversionContext(get_default_uid_cache_path(), patch_registry)
     converter = Vst3Converter(ctx)
 
     for vst2_info in root.findall(".//VstPluginInfo"):

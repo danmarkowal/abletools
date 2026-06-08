@@ -66,6 +66,9 @@ def main(argv: Optional[Sequence[str]] = None):
     plugins_parser.add_argument(
         "-w", "--ignorewarnings", action="store_true", help="Ignores version warnings."
     )
+    plugins_parser.add_argument(
+        "-a", "--patchdir", type=dir_type, help="The path to any additional patches used for plugin data conversion."
+    )
     plugins_parser.set_defaults(func=plugins.convert_vst2_to_vst3)
 
     unpack_parser = subparsers.add_parser(
