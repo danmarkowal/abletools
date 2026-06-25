@@ -1,7 +1,7 @@
 from argparse import Namespace
 
 
-from abletools.utils.cli_utils import print_progress_bar, clear_line
+from abletools.utils.tui_utils import print_progress_bar, clear_line
 from abletools.utils.process_utils import is_process_running
 from abletools.samples.formatter import Formatter
 from abletools.samples.scanner import Scanner

@@ -86,3 +86,11 @@ def format_long_text_element(element: etree.Element, chunk_size: int = 80):
 
     # 3. Join chunks with a newline, starting on a fresh line
     element.text = "\n" + "\n".join(chunks)
+
+
+def ableton_bool(value: str) -> bool:
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    raise ValueError(f"Ableton boolean must be either 'true' or 'false'.")

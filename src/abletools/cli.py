@@ -1,7 +1,3 @@
-import os
-import re
-
-
 import abletools.plugins.cli as plugins
 import abletools.projects.cli as projects
 import abletools.samples.cli as samples
@@ -11,26 +7,8 @@ from argparse import ArgumentParser, ArgumentTypeError
 from typing import Optional, Sequence
 
 
-def file_type(arg: str) -> str:
-    if os.path.isfile(arg):
-        return arg
-    else:
-        raise ArgumentTypeError(f"File not found: '{arg}'.")
-
-
-def dir_type(arg: str) -> str:
-    if os.path.isdir(arg):
-        return arg
-    else:
-        raise ArgumentTypeError(f"Directory not found: '{arg}'.")
-
-
-def regex_type(arg: str) -> re.Pattern[str]:
-    try:
-        return re.compile(arg)
-    except re.error as e:
-        raise ArgumentTypeError(
-            f"Invalid regex pattern: '{arg}'. Error: {e}")
+from abletools.plugins.cli import ConversionMode
+from abletools.utils.cli_utils import dir_type, file_type, regex_type
 
 
 def main(argv: Optional[Sequence[str]] = None):
@@ -40,7 +18,7 @@ def main(argv: Optional[Sequence[str]] = None):
     subparsers = parser.add_subparsers(dest="commands", required=True)
 
     samples_parser = subparsers.add_parser(
-        "samp", description="Finds unused samplepacks.")
+        "unused-samples", description="Finds unused samplepacks.")
     samples_parser.add_argument(
         "-p", "--projdir", type=dir_type, required=True, help="The directory containing your Ableton project folder(s).")
     samples_parser.add_argument(
@@ -54,7 +32,7 @@ def main(argv: Optional[Sequence[str]] = None):
     samples_parser.set_defaults(func=samples.find_unused_samples)
 
     plugins_parser = subparsers.add_parser(
-        "plug", description="Converts a project from using VST2 plugins to using VST3 plugins (where available).")
+        "convert", description="Converts a project from using VST2 plugins to using VST3 plugins (where available).")
     plugins_parser.add_argument(
         "-p", "--projfile", type=file_type, required=True, help="The project file to convert.")
     plugins_parser.add_argument(
@@ -64,11 +42,10 @@ def main(argv: Optional[Sequence[str]] = None):
         "-n", "--ignoreplugs", type=regex_type, help="Regex for the plugins to include in the conversion."
     )
     plugins_parser.add_argument(
-        "-w", "--ignorewarnings", action="store_true", help="Ignores version warnings."
+        "-a", "--patchdir", type=dir_type, help="The path to any additional patches used to convert plugin data for plugins with different representations for VST2 and VST3."
     )
     plugins_parser.add_argument(
-        "-a", "--patchdir", type=dir_type, help="The path to any additional patches used for plugin data conversion."
-    )
+        "-m", "--mode", type=ConversionMode, choices=list(ConversionMode), default=ConversionMode.NECESSARY, help="The conversion mode to use. The 'necessary' mode only converts a VST2 plugin if it is not found in the Live database, while the 'all' mode converts all VST2 plugins regardless of whether they are found in the Live database or not.")
     plugins_parser.set_defaults(func=plugins.convert_vst2_to_vst3)
 
     unpack_parser = subparsers.add_parser(
