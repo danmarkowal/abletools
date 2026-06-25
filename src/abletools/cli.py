@@ -42,7 +42,10 @@ def main(argv: Optional[Sequence[str]] = None):
         "-n", "--ignoreplugs", type=regex_type, help="Regex for the plugins to include in the conversion."
     )
     plugins_parser.add_argument(
-        "-a", "--patchdir", type=dir_type, help="The path to any additional patches used to convert plugin data for plugins with different representations for VST2 and VST3."
+        "-p", "--patchdir", type=dir_type, help="The path to any additional patches used to convert plugin data for plugins with different representations for VST2 and VST3."
+    )
+    plugins_parser.add_argument(
+        "--nodefaultpatches", action="store_true", help="Disable the built-in default patches and only use custom patches provided via --patchdir."
     )
     plugins_parser.add_argument(
         "-m", "--mode", type=ConversionMode, choices=list(ConversionMode), default=ConversionMode.NECESSARY, help="The conversion mode to use. The 'necessary' mode only converts a VST2 plugin if it is not found in the Live database, while the 'all' mode converts all VST2 plugins regardless of whether they are found in the Live database or not.")

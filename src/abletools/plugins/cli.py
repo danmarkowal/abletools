@@ -49,6 +49,9 @@ def convert_vst2_to_vst3(args: Namespace):
         return
 
     patch_registry = PatchRegistry()
+    if not args.nodefaultpatches:
+        patch_registry.load_default_patches()
+
     if args.patchdir:
         patch_registry.load_user_patches(Path(args.patchdir))
 

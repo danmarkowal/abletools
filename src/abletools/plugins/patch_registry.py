@@ -8,6 +8,8 @@ from typing import Any, Dict, List
 
 
 from abletools.api.patch import PluginPatch
+from abletools.plugins.patches.khs_patch import KhsPatch
+from abletools.plugins.patches.xpand2_patch import Xpand2Patch
 
 
 class PatchError(Exception):
@@ -17,6 +19,10 @@ class PatchError(Exception):
 class PatchRegistry:
     def __init__(self) -> None:
         self._patches: List[PluginPatch] = []
+
+    def load_default_patches(self) -> None:
+        default_patches: List[PluginPatch] = [KhsPatch(), Xpand2Patch()]
+        self._patches.extend(default_patches)
 
     def load_user_patches(self, dir_path: Path) -> None:
         """Dynamically loads .py files from a user-specified directory.
