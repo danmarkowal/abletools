@@ -19,9 +19,6 @@ from abletools.utils.xml_converter import XMLConversionError, ableton_bool, find
 from abletools.utils import project_utils
 
 
-ABLETON_LIVE_PROJECT_SUFFIX = ".als"
-
-
 class ConversionMode(Enum):
     ALL = "all"
     NECESSARY = "necessary"
@@ -100,7 +97,7 @@ def convert_vst2_to_vst3(args: Namespace):
     # The new project file name is the same as the old one but with " (Converted YYYY-MM-DD HH-MM-SS)" appended before the file extension
     timestamp = time.strftime("%Y-%m-%d %H-%M-%S")
     new_proj_path = proj_path.with_name(
-        f"{proj_path.stem} (Converted {timestamp}){ABLETON_LIVE_PROJECT_SUFFIX}")
+        f"{proj_path.stem} (Converted {timestamp}){project_utils.ABLETON_LIVE_PROJECT_SUFFIX}")
     print(f"Writing converted project to: '{new_proj_path}'.")
 
     # Fix indentation

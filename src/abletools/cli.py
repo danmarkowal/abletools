@@ -20,9 +20,9 @@ def main(argv: Optional[Sequence[str]] = None):
     samples_parser = subparsers.add_parser(
         "unused-samples", description="Finds unused samplepacks.")
     samples_parser.add_argument(
-        "-p", "--projdir", type=dir_type, required=True, help="The directory containing your Ableton project folder(s).")
+        "projdir", type=dir_type, help="The directory containing your Ableton project folder(s).")
     samples_parser.add_argument(
-        "-s", "--sampledir", type=dir_type, required=True, help="The directory containing your sample pack(s).")
+        "sampledir", type=dir_type, help="The directory containing your sample pack(s).")
     samples_parser.add_argument(
         "-r", "--recursive", action="store_false", help="Scan for project files recursively.")
     samples_parser.add_argument(
@@ -34,7 +34,7 @@ def main(argv: Optional[Sequence[str]] = None):
     plugins_parser = subparsers.add_parser(
         "convert", description="Converts a project from using VST2 plugins to using VST3 plugins (where available).")
     plugins_parser.add_argument(
-        "-p", "--projfile", type=file_type, required=True, help="The project file to convert.")
+        "projfile", type=file_type, help="The project file to convert.")
     plugins_parser.add_argument(
         "-y", "--includeplugs", type=regex_type, help="Regex for the plugins to include in the conversion."
     )
@@ -51,13 +51,13 @@ def main(argv: Optional[Sequence[str]] = None):
     unpack_parser = subparsers.add_parser(
         "unpack", description="Converts an Ableton project file to a readable XML file.")
     unpack_parser.add_argument(
-        "-p", "--projfile", type=file_type, required=True, help="The project file to unpack.")
+        "projfile", type=file_type, help="The project file to unpack.")
     unpack_parser.set_defaults(func=projects.unpack_project)
 
     pack_parser = subparsers.add_parser(
         "pack", description="Converts an XML file to an Ableton project file.")
-    pack_parser.add_argument("-p", "--projfile", type=file_type,
-                             required=True, help="The project file to pack.")
+    pack_parser.add_argument("projfile", type=file_type,
+                             help="The project file to pack.")
     pack_parser.set_defaults(func=projects.pack_project)
 
     try:
