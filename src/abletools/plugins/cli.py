@@ -53,7 +53,7 @@ def convert_vst2_to_vst3(args: Namespace):
 
     patch_registry = PatchRegistry()
     if args.patchdir:
-        patch_registry.load_user_patches(args.patchdir)
+        patch_registry.load_user_patches(Path(args.patchdir))
 
     for vst2_info in root.findall(".//VstPluginInfo"):
         try:
