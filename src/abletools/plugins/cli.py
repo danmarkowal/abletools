@@ -114,8 +114,8 @@ def convert_vst2_to_vst3(args: Namespace):
 def _add_vst2_metadata(metadata: Dict[str, Any], vst2_info: etree.Element) -> None:
     # We obtain these from the XML tree because it is not guaranteed that
     # the VST2 plugin is present on the user's computer
-    metadata["vst2_plugin_name"] = get_tagged_value(vst2_info, "UniqueId", int)
-    metadata["vst2_plugin_id"] = get_tagged_value(vst2_info, "PlugName", str)
+    metadata["vst2_plugin_name"] = get_tagged_value(vst2_info, "PlugName", str)
+    metadata["vst2_plugin_id"] = get_tagged_value(vst2_info, "UniqueId", int)
     metadata["vst2_plugin_version"] = get_tagged_value(
         vst2_info, "Version", str)
     metadata["vst2_vst_version"] = get_tagged_value(
