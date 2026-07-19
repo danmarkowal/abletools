@@ -15,25 +15,39 @@ class XMLConverter:
             "Converter subclasses must implement the convert method.")
 
 
-def copy_tag(source: etree.Element, target: etree.Element, tag: str):
-    target.append(find_not_null(source, tag))
+def copy_tag(source: etree.Element, target: etree.Element, tag: str, strict: bool = True):
+    """Copies a tag from a source element to a target element.
+    If strict is True, raises XMLConversionError if the tag is missing or None.
+    If strict is False, the tag is only copied if it exists and is not None.
+    """
+    if strict:
+        target.append(find_not_null(source, tag))
+    else:
+        element = source.find(tag)
+        if element is not None:
+            target.append(element)
 
 
-def map_tag(source: etree.Element, target: etree.Element, source_tag: str, target_tag: str):
+def map_tag(source: etree.Element, target: etree.Element, source_tag: str, target_tag: str, strict: bool = True):
     """Copies a tag 'source_tag' from a source element to a target element, mapping the tag's name to 'target_tag' if it exists."""
-    element = find_not_null(source, source_tag)
+    if strict:
+        element = find_not_null(source, source_tag)
+    else:
+        element = source.find(source_tag)
+        if element is None:
+            return
     element.tag = target_tag
     target.append(element)
 
 
-def copy_tags(source: etree.Element, target: etree.Element, tags: List[str]):
+def copy_tags(source: etree.Element, target: etree.Element, tags: List[str], strict: bool = True):
     for tag in tags:
-        copy_tag(source, target, tag)
+        copy_tag(source, target, tag, strict)
 
 
-def map_tags(source: etree.Element, target: etree.Element, tag_map: Dict[str, str]):
+def map_tags(source: etree.Element, target: etree.Element, tag_map: Dict[str, str], strict: bool = True):
     for source_tag, target_tag in tag_map.items():
-        map_tag(source, target, source_tag, target_tag)
+        map_tag(source, target, source_tag, target_tag, strict)
 
 
 def make_tagged_value(tag: str, value: str) -> etree.Element:

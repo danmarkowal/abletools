@@ -1,3 +1,5 @@
+import logging
+
 import abletools.plugins.cli as plugins
 import abletools.projects.cli as projects
 import abletools.samples.cli as samples
@@ -12,6 +14,9 @@ from abletools.utils.cli_utils import dir_type, file_type, regex_type
 
 
 def main(argv: Optional[Sequence[str]] = None):
+    logging.basicConfig(level=logging.DEBUG,
+                        format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.StreamHandler()])
+
     parser = ArgumentParser(
         prog="abletools",
         description="CLI tools for Ableton Live.")

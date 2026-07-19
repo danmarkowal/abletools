@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 from lxml import etree
@@ -29,8 +29,8 @@ class VstConversionContext:
 
 class Vst3Converter(XMLConverter):
     # These tags are the same in VST2 and VST3 plugin info, so we can just copy them over without modification
-    SAME_TAGS = ["WinPosX", "WinPosY", "NumAudioInputs",
-                 "NumAudioOutputs", "IsPlaceholderDevice"]
+    SAME_TAGS: List[str] = ["WinPosX", "WinPosY", "NumAudioInputs",
+                            "NumAudioOutputs", "IsPlaceholderDevice"]
 
     def __init__(self, ctx: VstConversionContext):
         self.ctx = ctx
@@ -41,7 +41,8 @@ class Vst3Converter(XMLConverter):
         # IDK whether you can have more than one Vst3PluginInfo in a plugin descriptor tag
         vst3_info.set("Id", root.get("Id", "0"))
 
-        copy_tags(root, vst3_info, self.SAME_TAGS)
+        # Copying these tags stricly causes errors when convertion older Live sets
+        copy_tags(root, vst3_info, self.SAME_TAGS, strict=False)
 
         # <Preset Id="12345">
         vst3_info.append(VstPresetConverter(
@@ -60,19 +61,19 @@ class Vst3Converter(XMLConverter):
 class VstPresetConverter(XMLConverter):
     # These go before the Processor and Controller states
     # I'm not sure if the order matters, but we might as well keep it consistent
-    SAME_TAGS_1 = ["OverwriteProtectionNumber",
-                   "MpeEnabled", "MpeSettings",
-                   "ParameterSettings", "IsOn",
-                   "PowerMacroControlIndex",
-                   "PowerMacroMappingRange",
-                   "IsFolded",
-                   "StoredAllParameters",
-                   "DeviceLomId",
-                   "DeviceViewLomId",
-                   "IsOnLomId",
-                   "ParametersListWrapperLomId"]
+    SAME_TAGS_1: List[str] = ["OverwriteProtectionNumber",
+                              "MpeEnabled", "MpeSettings",
+                              "ParameterSettings", "IsOn",
+                              "PowerMacroControlIndex",
+                              "PowerMacroMappingRange",
+                              "IsFolded",
+                              "StoredAllParameters",
+                              "DeviceLomId",
+                              "DeviceViewLomId",
+                              "IsOnLomId",
+                              "ParametersListWrapperLomId"]
     # These go after the Processor and Controller states
-    SAME_TAGS_2 = ["Name", "PresetRef"]
+    SAME_TAGS_2: List[str] = ["Name", "PresetRef"]
 
     def __init__(self, ctx: VstConversionContext):
         self.ctx = ctx

@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 
@@ -29,7 +30,17 @@ class ConversionMode(Enum):
 
 def convert_vst2_to_vst3(args: Namespace):
     if is_process_running("Live"):
-        print("Please close Ableton Live before running this command.")
+        logging.error("Please close Ableton Live before running this command.")
+        return
+
+    logging.info(
+        f"Starting VST2 to VST3 conversion for project file: '{args.projfile}'.")
+
+    try:
+        db = LivePluginDB()
+        db.open_connection()
+    except PluginDBError as e:
+        logging.error(f"Error initialising Live plugin database. Error {e}")
         return
 
     # 1. Read and decode project file (gzip)
@@ -41,19 +52,15 @@ def convert_vst2_to_vst3(args: Namespace):
     root = etree.fromstring(project_utils.read_project_file(
         args.projfile), parser=etree.XMLParser(huge_tree=True))
 
-    try:
-        db = LivePluginDB()
-        db.open_connection()
-    except PluginDBError as e:
-        print(f"Error initialising Live plugin database. Error {e}")
-        return
-
     patch_registry = PatchRegistry()
     if not args.nodefaultpatches:
         patch_registry.load_default_patches()
+        logging.info("Loaded default patches.")
 
     if args.patchdir:
         patch_registry.load_user_patches(Path(args.patchdir))
+        logging.info(
+            f"Loaded {patch_registry.get_patch_count()} user patches from directory: '{args.patchdir}'.")
 
     for vst2_info in root.findall(".//VstPluginInfo"):
         try:
@@ -64,6 +71,7 @@ def convert_vst2_to_vst3(args: Namespace):
             vst2_device_id = _find_device_id(vst2_info)
             vst2_metadata = db.get_metadata(vst2_device_id)
 
+            # If VST2 meta data is not none, then the plugin was found in the Live database
             if args.mode == ConversionMode.NECESSARY and vst2_metadata is not None:
                 continue
 
@@ -73,13 +81,13 @@ def convert_vst2_to_vst3(args: Namespace):
                 vst2_device_id=vst2_device_id,
                 vst2_plugin_name=name,
                 vst2_plugin_path=path)
-            if not vst3_metadata:
-                # Try matching by name and path for a final time, without access to
-                pass
 
             if vst3_metadata is None:
                 raise PluginDBError(
                     f"Could not match VST2 plugin '{name}' to a VST3 plugin. Device ID: {vst2_device_id}")
+
+            logging.info(
+                f"Matched VST2 plugin '{name}' to VST3 plugin '{vst3_metadata.name}'.")
 
             metadata: Dict[str, Any] = {}
             _add_vst2_metadata(metadata, vst2_info)
@@ -91,8 +99,11 @@ def convert_vst2_to_vst3(args: Namespace):
             parent = vst2_info.getparent()
             if parent is not None:
                 parent.replace(vst2_info, vst3_info)
+
+            logging.info(
+                f"Converted VST2 plugin '{metadata['vst2_plugin_name']}' ({metadata['vst2_plugin_id']}) to VST3 plugin '{metadata['vst3_plugin_name']}' ({metadata['vst3_plugin_id']}).")
         except Exception as e:
-            print(f"Failed to convert plugin. Error: {e}")
+            logging.error(f"Failed to convert plugin. Error: {e}")
 
     db.close_connection()
 
@@ -101,10 +112,11 @@ def convert_vst2_to_vst3(args: Namespace):
     timestamp = time.strftime("%Y-%m-%d %H-%M-%S")
     new_proj_path = proj_path.with_name(
         f"{proj_path.stem} (Converted {timestamp}){project_utils.ABLETON_LIVE_PROJECT_SUFFIX}")
-    print(f"Writing converted project to: '{new_proj_path}'.")
 
     # Fix indentation
     etree.indent(root, "\t")
+
+    logging.info(f"Writing converted project to: '{new_proj_path}'.")
 
     new_proj_contents = etree.tostring(
         root, pretty_print=True, xml_declaration=True, encoding="UTF-8")

@@ -64,3 +64,7 @@ class PatchRegistry:
             raise PatchError(
                 f"Multiple patches found that apply to plugin with metadata {metadata}")
         return applicable_patches[0].apply(plugin_data, metadata)
+
+    def get_patch_count(self) -> int:
+        """Returns the number of patches currently registered in the registry."""
+        return len(self._patches)

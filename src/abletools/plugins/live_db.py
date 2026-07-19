@@ -121,8 +121,8 @@ SELECT
 FROM plugins p0
 INNER JOIN plugins p1
     ON p0.vendor = p1.vendor
-AND p0.name = p1.name
-AND p0.subcategories = p1.subcategories
+    AND p0.name = p1.name
+    AND p0.subcategories = p1.subcategories
 WHERE
     p1.dev_identifier = ?
 AND p0.dev_identifier <> p1.dev_identifier
@@ -141,7 +141,7 @@ SELECT
 FROM plugins p
 WHERE
     p.dev_identifier LIKE '%:vst3:%'
-AND (p.name LIKE '%' || :plugname || '%' OR :plugname LIKE '%' || p.name || '%')
+    AND p.name = :plugname
 """
             bindings = {"plugname": kwargs["vst2_plugin_name"]}
 
