@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 
 
 from abletools.api.patch import PluginPatch
+from abletools.plugins.patches.imager_2_patch import Imager2Patch
 from abletools.plugins.patches.khs_patch import KhsPatch
 from abletools.plugins.patches.xpand2_patch import Xpand2Patch
 
@@ -21,7 +22,8 @@ class PatchRegistry:
         self._patches: List[PluginPatch] = []
 
     def load_default_patches(self) -> None:
-        default_patches: List[PluginPatch] = [KhsPatch(), Xpand2Patch()]
+        default_patches: List[PluginPatch] = [
+            Imager2Patch(), KhsPatch(), Xpand2Patch()]
         self._patches.extend(default_patches)
 
     def load_user_patches(self, dir_path: Path) -> None:

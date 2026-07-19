@@ -3,21 +3,19 @@ from typing import Any, Dict
 from abletools.api.patch import PluginPatch
 
 
-class Xpand2Patch(PluginPatch):
+class Imager2Patch(PluginPatch):
     @property
     def name(self) -> str:
-        return "Xpand!2 Patch"
+        return "Ozone Imager 2 Patch"
 
     def should_apply(self, metadata: Dict[str, Any]) -> bool:
-        # Target Xpand!2 specifically. We check a few common string formats
-        # just in case the host DAW reports the name slightly differently.
         plugin_name = metadata.get("vst2_plugin_name", "").lower()
-        return plugin_name in ["xpand!2", "xpand2", "xpand!2_x64"]
+        return plugin_name == "Ozone Imager 2".lower()
 
     def apply(self, hex_data: str, metadata: Dict[str, Any]) -> str:
-        # VST2 data has a 16-byte header (32 hex characters) representing the
-        # chunk size. The VST3 format drops this header completely.
-        header_hex_length = 32
+        # VST2 data has a 4-byte header (8 hex characters)
+        # The VST3 format drops this header completely.
+        header_hex_length = 8
 
         # Safely slice off the header if the string is long enough
         if len(hex_data) > header_hex_length:

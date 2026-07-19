@@ -12,7 +12,7 @@ class KhsPatch(PluginPatch):
         return "kHs Patch"
 
     def should_apply(self, metadata: Dict[str, Any]) -> bool:
-        return metadata.get("plugin_vendor", "").lower() == "kilohearts"
+        return metadata.get("plugin_vendor", "").lower() == "Kilohearts".lower()
 
     def apply(self, hex_data: str, metadata: Dict[str, Any]) -> str:
         version = 1
