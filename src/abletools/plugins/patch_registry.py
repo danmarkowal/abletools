@@ -4,7 +4,7 @@ import sys
 
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 from abletools.api.patch import PluginPatch
@@ -18,8 +18,8 @@ class PatchError(Exception):
 
 
 class PatchRegistry:
-    def __init__(self) -> None:
-        self._patches: List[PluginPatch] = []
+    def __init__(self, patches: Optional[List[PluginPatch]] = None) -> None:
+        self._patches: List[PluginPatch] = list(patches or [])
 
     def load_default_patches(self) -> None:
         default_patches: List[PluginPatch] = [
@@ -66,6 +66,10 @@ class PatchRegistry:
             raise PatchError(
                 f"Multiple patches found that apply to plugin with metadata {metadata}")
         return applicable_patches[0].apply(plugin_data, metadata)
+
+    def get_patches(self) -> List[PluginPatch]:
+        """Returns the patches currently registered in the registry."""
+        return list(self._patches)
 
     def get_patch_count(self) -> int:
         """Returns the number of patches currently registered in the registry."""

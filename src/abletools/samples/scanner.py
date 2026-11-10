@@ -1,11 +1,10 @@
+import logging
 import os
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from multiprocessing import Pool
-from typing import List, Optional, Set
+from typing import Dict, List, Optional, Set
 
-from abletools.samples.projects import get_project_files, process_project_file
+from abletools.samples.projects import Project
 from abletools.samples.samples import Sample, is_media_file, should_ignore
 
 
@@ -24,54 +23,61 @@ class Node:
     usage: UsageType = field()
     # the subdirectories of this directory
     children: List["Node"] = field(default_factory=lambda: [])
+    # the samples directly inside this directory
+    samples: List[Sample] = field(default_factory=lambda: [])
+    # the number of samples in this directory and its subdirectories
+    sample_count: int = field(default=0)
+    # the size in bytes of the samples in this directory and its subdirectories
+    size: int = field(default=0)
+    # the project files that use samples in this directory or its subdirectories
+    projects: Set[str] = field(default_factory=lambda: set())
 
 
 @dataclass
 class ScanResult:
     root: Node = field()
+    # the projects that were scanned
+    projects: List[Project] = field()
+    # the project files that use each sample
+    usages: Dict[Sample, Set[str]] = field()
 
 
 class Scanner:
     _result: Optional[ScanResult] = None
-    # on_process(project_index: int, project_count: int)
-    on_process: Optional[Callable[[int, int], None]]
 
-    def __init__(self, on_process: Optional[Callable[[int, int], None]] = None):
-        self.on_process = on_process
-
-    def scan(self, project_folder: str, sample_folder: str, recursive: bool, include_backups: bool):
-        project_files = get_project_files(
-            project_folder, recursive, include_backups)
-
-        project_samples: Set[Sample] = set()
-        hardware_concurrency = os.cpu_count()
-        project_index = 0
-        with Pool(processes=hardware_concurrency) as p:
-            for result in p.imap_unordered(process_project_file, project_files):
-                project_samples.update(result)
-                project_index += 1
-                # callback for progress bar
-                if self.on_process is not None:
-                    self.on_process(project_index, len(project_files))
-
+    def scan(self, projects: List[Project], sample_folder: str, recursive: bool):
+        usages = get_usages(projects)
         root = self._find_unused_samples(
-            sample_folder, project_samples, recursive)
-        self._result = ScanResult(root)
+            os.path.abspath(sample_folder), usages, recursive)
+        self._result = ScanResult(root, projects, usages)
 
-    def _find_unused_samples(self, folder: str, project_samples: set[Sample], recursive: bool) -> Node:
-        res = Node(folder, UsageType.UNUSED, [])
-        for child in os.listdir(folder):
-            file = os.path.join(folder, child)
-            if os.path.isdir(file) and recursive:
+    def _find_unused_samples(self, folder: str, usages: Dict[Sample, Set[str]], recursive: bool) -> Node:
+        res = Node(folder, UsageType.UNUSED)
+        try:
+            with os.scandir(folder) as it:
+                entries = sorted(it, key=lambda entry: entry.name.lower())
+        except OSError as e:
+            logging.warning(f"Could not scan folder '{folder}'. Error: {e}")
+            return res
+
+        for entry in entries:
+            if entry.is_dir() and recursive:
                 child = self._find_unused_samples(
-                    file, project_samples, recursive)
+                    entry.path, usages, recursive)
                 if res.usage != UsageType.USED and child.usage in (UsageType.USED, UsageType.TRANSITIVE):
                     res.usage = UsageType.TRANSITIVE
+                res.sample_count += child.sample_count
+                res.size += child.size
+                res.projects.update(child.projects)
                 res.children.append(child)
-            elif os.path.isfile(file) and is_media_file(file) and not should_ignore(file):
-                sample = Sample(os.path.abspath(file))
-                if sample in project_samples:
+            elif entry.is_file() and is_media_file(entry.name) and not should_ignore(entry.name):
+                sample = Sample(entry.path)
+                res.samples.append(sample)
+                res.sample_count += 1
+                res.size += entry.stat().st_size
+                if sample in usages:
                     res.usage = UsageType.USED
+                    res.projects.update(usages[sample])
         return res
 
     @property
@@ -80,3 +86,19 @@ class Scanner:
             raise RuntimeError(
                 "Cannot access 'result' before running 'scan()'.")
         return self._result
+
+
+def get_usages(projects: List[Project]) -> Dict[Sample, Set[str]]:
+    """Returns the project files that use each sample."""
+    usages: Dict[Sample, Set[str]] = {}
+    for project in projects:
+        for sample in project.samples:
+            usages.setdefault(sample, set()).add(project.path)
+    return usages
+
+
+def find_unused_folders(node: Node) -> List[Node]:
+    """Returns the unused folders that are not inside another unused folder."""
+    if node.usage == UsageType.UNUSED:
+        return [node]
+    return [unused for child in node.children for unused in find_unused_folders(child)]

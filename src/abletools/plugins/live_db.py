@@ -107,9 +107,16 @@ WHERE p.dev_identifier = ?
             return None
 
         cursor = self.connection.cursor()
+        vst2_device_id: str = kwargs["vst2_device_id"]
+        # Device IDs look like "device:vst:audiofx:<id>", so this makes sure that an effect is only matched to an effect
+        # and an instrument to an instrument
+        category = vst2_device_id.split(":")[2] if vst2_device_id.count(
+            ":") >= 3 else "%"
+        vst3_pattern = f"device:vst3:{category}:%"
 
-        if len(kwargs["vst2_device_id"]) > 0:
-            # We can match by the vendor as well
+        if len(vst2_device_id) > 0:
+            # We can match by the vendor as well if the VST2 plugin is installed
+            # Live doesn't store subcategories for VST2 plugins, so they only have to match if the VST2 plugin has some
             query = """
 SELECT
     p0.dev_identifier,
@@ -122,15 +129,19 @@ FROM plugins p0
 INNER JOIN plugins p1
     ON p0.vendor = p1.vendor
     AND p0.name = p1.name
-    AND p0.subcategories = p1.subcategories
+    AND (p0.subcategories = p1.subcategories OR p1.subcategories = '')
 WHERE
     p1.dev_identifier = ?
 AND p0.dev_identifier <> p1.dev_identifier
-AND p0.dev_identifier LIKE '%:vst3:%'
+AND p0.dev_identifier LIKE ?
 """.strip()
-            bindings = (kwargs["vst2_device_id"],)
-        else:
-            query = """
+            cursor.execute(query, (vst2_device_id, vst3_pattern))
+            result = cursor.fetchone()
+            if result:
+                return result
+
+        # Otherwise (e.g. if the VST2 plugin isn't installed, or old Live sets without device IDs) only the name can be used
+        query = """
 SELECT
     p.dev_identifier,
     p.name,
@@ -140,12 +151,11 @@ SELECT
     p.subcategories
 FROM plugins p
 WHERE
-    p.dev_identifier LIKE '%:vst3:%'
+    p.dev_identifier LIKE :pattern
     AND p.name = :plugname
 """
-            bindings = {"plugname": kwargs["vst2_plugin_name"]}
-
-        cursor.execute(query, bindings)
+        cursor.execute(
+            query, {"pattern": vst3_pattern, "plugname": kwargs["vst2_plugin_name"]})
         return cursor.fetchone()
 
     def _match_by_fingerprint(self, **kwargs: Any) -> Optional[Tuple[Any, ...]]:
@@ -190,6 +200,9 @@ WHERE pm.path LIKE '%.vst3'
         if not self.connection:
             return None
 
+        if kwargs["vst2_plugin_path"] is None:
+            return None
+
         # Assuming that the VST2 is located at the default OS path, we compute where the VST3 version of the plugin should be
         vst3_path = _convert_to_vst3_path(kwargs["vst2_plugin_path"])
 
@@ -212,6 +225,50 @@ WHERE
         cursor.execute(plugin_query, (str(vst3_path),))
         plugin_result = cursor.fetchone()
         return plugin_result
+
+    def find_vst3(self, uid: Uid) -> Optional[Tuple[str, str]]:
+        """Returns the name and vendor of the installed VST3 plugin with the given UID, or None if it isn't installed."""
+        if not self.connection:
+            raise PluginDBError(
+                "Cannot query database as connection is not open.")
+
+        # VST3 device IDs end with the UID as a UUID, e.g. "device:vst3:instr:56535458-6673-5873-6572-756d00000000"
+        query = """
+SELECT
+    p.name,
+    p.vendor
+FROM plugins p
+WHERE p.dev_identifier LIKE ?
+""".strip()
+
+        cursor = self.connection.cursor()
+        cursor.execute(query, (f"device:vst3:%:{_uid_to_uuid(uid)}",))
+        return cursor.fetchone()
+
+    def has_format(self, format: str) -> bool:
+        """Checks if the database contains any plugins of a format, e.g. 'au'.
+
+        Live only lists Audio Units if they are turned on in its settings.
+        """
+        if not self.connection:
+            raise PluginDBError(
+                "Cannot query database as connection is not open.")
+
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT 1 FROM plugins WHERE dev_identifier LIKE ?",
+                       (f"device:{format}:%",))
+        return cursor.fetchone() is not None
+
+    def has_plugin_named(self, format: str, name: str) -> bool:
+        """Checks if a plugin of a format (e.g. 'au') with the given name is installed."""
+        if not self.connection:
+            raise PluginDBError(
+                "Cannot query database as connection is not open.")
+
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT 1 FROM plugins WHERE dev_identifier LIKE ? AND name = ?",
+                       (f"device:{format}:%", name))
+        return cursor.fetchone() is not None
 
     def close_connection(self) -> None:
         if self.connection:
@@ -272,6 +329,11 @@ def _get_plugin_id(device_id: str) -> Union[int, Uid]:
 def _uuid_to_uid(uuid_str: str) -> Uid:
     """Converts a standard UUID string back into four 32-bit integers for Ableton XML."""
     return struct.unpack(">4i", UUID(uuid_str).bytes)
+
+
+def _uid_to_uuid(uid: Uid) -> str:
+    """Converts the four 32-bit integers of a VST3 UID back into a UUID string. The reverse of _uuid_to_uid()."""
+    return str(UUID(bytes=struct.pack(">4i", *uid)))
 
 
 def _get_ableton_plugin_db_path() -> Optional[Path]:
